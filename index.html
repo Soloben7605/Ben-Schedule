@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1014">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Planner</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0e1014;
+    --surface: #15181f;
+    --surface-2: #1c2029;
+    --surface-3: #242935;
+    --border: #232833;
+    --text: #e7e9ee;
+    --muted: #8a91a0;
+    --faint: #565c69;
+    --accent: #8ab4ff;
+    --accent-ink: #0b1220;
+    --danger: #ff7d7d;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { min-height: 100vh; padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { background: none; border: 0; padding: 0; cursor: pointer; }
+  svg { display: block; }
+
+  /* ---------- Header ---------- */
+  .top {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+    background: rgba(14, 16, 20, .88);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav { display: flex; align-items: center; gap: 2px; min-width: 0; }
+  .icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: grid; place-items: center; color: var(--muted); flex: none;
+  }
+  .range { display: flex; flex-direction: column; align-items: flex-start; padding: 2px 6px; min-width: 0; }
+  #rangeMain { font-weight: 600; font-size: 16px; white-space: nowrap; }
+  #rangeSub { font-size: 12px; color: var(--muted); }
+  #rangeSub.away { color: var(--accent); }
+  .list-title { display: none; font-weight: 600; font-size: 16px; padding: 8px 4px; }
+  body[data-mode="list"] .nav { display: none; }
+  body[data-mode="list"] .list-title { display: block; }
+
+  .seg { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; flex: none; }
+  .seg button { padding: 6px 12px; border-radius: 7px; font-size: 13px; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--surface-3); color: var(--text); }
+
+  main { max-width: 640px; margin: 0 auto; padding: 12px 12px 0; }
+
+  /* ---------- Entries (shared) ---------- */
+  .entries { display: flex; flex-direction: column; gap: 4px; }
+  .entry {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 10px 12px; border-radius: 10px; text-align: left;
+    background: var(--surface-2);
+  }
+  .entry .time { width: 40px; flex: none; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .entry .time:empty::before { content: "–"; color: var(--faint); }
+  .entry .body { flex: 1; min-width: 0; }
+  .entry .title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .entry .preview { display: block; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .entry .has-notes { flex: none; color: var(--faint); }
+  .entry.flash { animation: flash 1.2s ease-out; }
+  @keyframes flash { 0% { background: rgba(138, 180, 255, .35); } 100% { background: var(--surface-2); } }
+
+  /* ---------- Week view ---------- */
+  .week { display: flex; flex-direction: column; gap: 8px; }
+  .day {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 4px;
+  }
+  .day.is-past { opacity: .5; }
+  .day.is-today { border-color: rgba(138, 180, 255, .45); }
+  .day-head { display: flex; align-items: center; }
+  .day-open { flex: 1; display: flex; align-items: baseline; gap: 10px; padding: 9px 10px; text-align: left; min-width: 0; }
+  .dow { font-weight: 600; width: 2.4em; }
+  .dnum { color: var(--muted); }
+  .is-today .dow, .is-today .dnum { color: var(--accent); }
+  .tag { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
+  .count { margin-left: auto; font-size: 12px; color: var(--faint); }
+  .day-add { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; color: var(--faint); flex: none; }
+  .day .entries { padding: 0 0 2px; }
+
+  /* ---------- List view ---------- */
+  .group + .group { margin-top: 18px; }
+  .group-head { display: flex; gap: 8px; align-items: baseline; padding: 4px 4px 8px; text-align: left; width: 100%; }
+  .group-head strong { font-weight: 600; }
+  .group-head span { color: var(--muted); font-size: 13px; }
+  .group-head.is-today strong { color: var(--accent); }
+  .empty-state { text-align: center; color: var(--muted); padding: 64px 16px; }
+
+  /* ---------- FAB ---------- */
+  .fab {
+    position: fixed; z-index: 6;
+    right: calc(18px + env(safe-area-inset-right));
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    width: 58px; height: 58px; border-radius: 18px;
+    background: var(--accent); color: var(--accent-ink);
+    display: grid; place-items: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  }
+  .fab:active { transform: scale(.96); }
+
+  /* ---------- Sheet ---------- */
+  .scrim {
+    position: fixed; inset: 0; z-index: 10; background: rgba(0, 0, 0, .55);
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .sheet {
+    position: fixed; z-index: 11; left: 0; right: 0; bottom: 0;
+    max-width: 560px; margin: 0 auto; max-height: 88vh; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--border); border-bottom: 0;
+    border-radius: 20px 20px 0 0;
+    padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
+    transform: translateY(100%); visibility: hidden;
+    transition: transform .22s cubic-bezier(.2, .8, .2, 1), visibility 0s .22s;
+  }
+  .sheet::before { content: ""; display: block; width: 36px; height: 4px; border-radius: 2px; background: var(--surface-3); margin: 0 auto 14px; }
+  body.sheet-open .scrim { opacity: 1; pointer-events: auto; }
+  body.sheet-open .sheet { transform: none; visibility: visible; transition: transform .22s cubic-bezier(.2, .8, .2, 1); }
+  .sheet h2 { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+  .sheet .meta { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  .sheet .sheet-head { margin-bottom: 14px; }
+  .notes { white-space: pre-wrap; overflow-wrap: anywhere; margin: 14px 0 0; color: #c9cdd6; }
+  .notes.none { color: var(--faint); }
+  .muted { color: var(--muted); margin: 4px 0 0; }
+
+  .actions { display: flex; gap: 8px; margin-top: 20px; }
+  .btn {
+    flex: 1; height: 46px; border-radius: 12px; font-weight: 600;
+    background: var(--surface-3);
+  }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); }
+  .btn.danger { color: var(--danger); background: rgba(255, 125, 125, .08); }
+  .btn.danger.armed { background: var(--danger); color: #1a0a0a; }
+  .btn.wide { width: 100%; margin-top: 16px; flex: none; }
+
+  /* ---------- Form ---------- */
+  .title-input {
+    width: 100%; border: 0; outline: 0; background: transparent;
+    font-size: 20px; font-weight: 600; padding: 4px 0 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .title-input::placeholder { color: var(--faint); }
+  .title-input.shake { animation: shake .3s; border-bottom-color: var(--danger); }
+  @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .field { margin-top: 16px; }
+  .field-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .label { font-size: 13px; color: var(--muted); }
+  .opt { color: var(--faint); }
+  .mini-nav { display: flex; align-items: center; gap: 2px; font-size: 13px; color: var(--muted); }
+  .mini-nav button { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; }
+  .chips { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .chip {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 8px 0; border-radius: 10px; background: var(--surface-2);
+    font-size: 12px; color: var(--muted);
+  }
+  .chip b { font-size: 16px; font-weight: 600; color: var(--text); }
+  .chip.is-today { box-shadow: inset 0 0 0 1px rgba(138, 180, 255, .45); }
+  .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .chip[aria-pressed="true"] b { color: var(--accent-ink); }
+  .time-row { display: flex; align-items: center; gap: 10px; }
+  .time-row .label { flex: 1; }
+  input[type="time"], textarea {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; outline: 0;
+  }
+  input[type="time"] { min-width: 120px; min-height: 42px; }
+  input[type="time"]:focus, textarea:focus { border-color: rgba(138, 180, 255, .6); }
+  .clear { font-size: 13px; color: var(--muted); padding: 8px 4px; }
+  textarea { width: 100%; resize: vertical; min-height: 72px; margin-top: 8px; }
+  .link { color: var(--accent); font-size: 14px; padding: 4px 0; }
+
+  @media (hover: hover) {
+    .icon:hover, .day-add:hover, .mini-nav button:hover { background: var(--surface-2); color: var(--text); }
+    .entry:hover { background: var(--surface-3); }
+    .day-open:hover .dow { text-decoration: underline; text-underline-offset: 3px; }
+    .btn:hover { filter: brightness(1.1); }
+  }
+
+  /* ---------- Wide screens: 7-column week ---------- */
+  @media (min-width: 960px) {
+    main.wide { max-width: 1280px; padding: 16px 20px 0; }
+    .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-items: stretch; }
+    .day { min-height: 60vh; cursor: pointer; }
+    .day-open { flex-wrap: wrap; row-gap: 0; }
+    .count { display: none; }
+    .day .entry { flex-direction: column; align-items: stretch; gap: 2px; padding: 8px 10px; }
+    .day .entry .time { width: auto; font-size: 12px; }
+    .day .entry .time:empty { display: none; }
+    .day .entry .title { white-space: normal; overflow-wrap: anywhere; }
+    .day .entry .has-notes { display: none; }
+    .sheet { bottom: auto; top: 50%; border-radius: 20px; border-bottom: 1px solid var(--border);
+      transform: translateY(-46%) scale(.98); opacity: 0;
+      transition: transform .18s, opacity .18s, visibility 0s .18s; padding-bottom: 20px; }
+    .sheet::before { display: none; }
+    body.sheet-open .sheet { transform: translateY(-50%); opacity: 1; transition: transform .18s, opacity .18s; }
+  }
+</style>
+</head>
+<body data-mode="week">
+
+<header class="top">
+  <div class="nav">
+    <button class="icon" data-nav="-1" aria-label="Previous week">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <button class="range" data-nav="0" title="Jump to this week">
+      <span id="rangeMain"></span><span id="rangeSub"></span>
+    </button>
+    <button class="icon" data-nav="1" aria-label="Next week">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  </div>
+  <div class="list-title">Upcoming</div>
+  <div class="seg" role="group" aria-label="View">
+    <button data-view="week">Week</button>
+    <button data-view="list">List</button>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<button class="fab" data-add="" aria-label="New entry">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<div class="scrim" data-close></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+
+<script>
+(() => {
+  // ---------- Storage ----------
+  const KEY = 'planner.v1.entries';
+  const VIEW_KEY = 'planner.v1.view';
+
+  function load() {
+    try {
+      const v = JSON.parse(localStorage.getItem(KEY));
+      return Array.isArray(v) ? v : [];
+    } catch { return []; }
+  }
+  function persist() { localStorage.setItem(KEY, JSON.stringify(state.entries)); }
+
+  const state = {
+    entries: load(),
+    view: localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'week',
+    offset: 0, // weeks from the current week
+  };
+
+  // ---------- Dates (all local, stored as YYYY-MM-DD) ----------
+  const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const DOW_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const MON_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const pad = n => String(n).padStart(2, '0');
+  const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const today = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); };
+  const dowIdx = d => (d.getDay() + 6) % 7; // Monday = 0
+  const startOfWeek = d => addDays(d, -dowIdx(d));
+  const dayDiff = (a, b) => Math.round((a - b) / 864e5);
+  const viewedWeekStart = () => addDays(startOfWeek(today()), state.offset * 7);
+
+  const fmtShort = k => { const d = parse(k); return `${DOW[dowIdx(d)]} ${d.getDate()} ${MON[d.getMonth()]}`; };
+  const fmtLong = k => { const d = parse(k); return `${DOW_FULL[dowIdx(d)]} ${d.getDate()} ${MON_FULL[d.getMonth()]}`; };
+  function relDay(k) {
+    const diff = dayDiff(parse(k), today());
+    return diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : diff === -1 ? 'Yesterday' : '';
+  }
+  function rangeLabel(start) {
+    const end = addDays(start, 6);
+    const yr = end.getFullYear() !== today().getFullYear() ? ` ${end.getFullYear()}` : '';
+    if (start.getMonth() === end.getMonth()) return `${start.getDate()} – ${end.getDate()} ${MON[end.getMonth()]}${yr}`;
+    const syr = start.getFullYear() !== end.getFullYear() ? ` ${start.getFullYear()}` : '';
+    return `${start.getDate()} ${MON[start.getMonth()]}${syr} – ${end.getDate()} ${MON[end.getMonth()]}${yr}`;
+  }
+  function weekSub(o) {
+    if (o === 0) return 'This week';
+    if (o === 1) return 'Next week';
+    if (o === -1) return 'Last week';
+    return o > 1 ? `In ${o} weeks` : `${-o} weeks ago`;
+  }
+
+  // ---------- Helpers ----------
+  const $ = s => document.querySelector(s);
+  const main = $('#main');
+  const sheet = $('#sheet');
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const find = id => state.entries.find(e => e.id === id);
+  const byTime = (a, b) => (a.time || '').localeCompare(b.time || ''); // untimed first
+  const entriesOn = k => state.entries.filter(e => e.date === k).sort(byTime);
+
+  const NOTES_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h9"/></svg>';
+  const CHEV_L = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
+  const CHEV_R = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+  const PLUS = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+
+  function entryHTML(e, withPreview = false) {
+    const preview = withPreview && e.notes ? `<span class="preview">${esc(e.notes.split('\n')[0])}</span>` : '';
+    const icon = !withPreview && e.notes ? `<span class="has-notes" aria-label="Has description">${NOTES_ICON}</span>` : '';
+    return `<button class="entry" data-open="${e.id}">
+      <span class="time">${e.time || ''}</span>
+      <span class="body"><span class="title">${esc(e.title)}</span>${preview}</span>${icon}
+    </button>`;
+  }
+
+  // ---------- Rendering ----------
+  function render() {
+    document.body.dataset.mode = state.view;
+    document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === state.view));
+    main.classList.toggle('wide', state.view === 'week');
+    state.view === 'week' ? renderWeek() : renderList();
+  }
+
+  function renderWeek() {
+    const start = viewedWeekStart();
+    const t = ymd(today());
+    $('#rangeMain').textContent = rangeLabel(start);
+    const sub = $('#rangeSub');
+    sub.textContent = state.offset === 0 ? weekSub(0) : `${weekSub(state.offset)} · back to today`;
+    sub.classList.toggle('away', state.offset !== 0);
+
+    let html = '';
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(start, i);
+      const k = ymd(d);
+      const items = entriesOn(k);
+      const cls = k === t ? 'is-today' : k < t ? 'is-past' : '';
+      html += `<section class="day ${cls}" data-day="${k}">
+        <div class="day-head">
+          <button class="day-open" data-day="${k}">
+            <span class="dow">${DOW[i]}</span><span class="dnum">${d.getDate()} ${MON[d.getMonth()]}</span>
+            ${k === t ? '<span class="tag">Today</span>' : ''}
+            ${items.length ? `<span class="count">${items.length}</span>` : ''}
+          </button>
+          <button class="day-add" data-add="${k}" aria-label="Add to ${DOW_FULL[i]}">${PLUS}</button>
+        </div>
+        ${items.length ? `<div class="entries">${items.map(e => entryHTML(e)).join('')}</div>` : ''}
+      </section>`;
+    }
+    main.innerHTML = `<div class="week">${html}</div>`;
+  }
+
+  function renderList() {
+    const t = ymd(today());
+    const items = state.entries
+      .filter(e => e.date >= t)
+      .sort((a, b) => a.date.localeCompare(b.date) || byTime(a, b));
+    if (!items.length) {
+      main.innerHTML = '<p class="empty-state">Nothing coming up.<br>Tap + to plan something.</p>';
+      return;
+    }
+    const groups = [];
+    for (const e of items) {
+      const last = groups[groups.length - 1];
+      if (last && last.date === e.date) last.items.push(e);
+      else groups.push({ date: e.date, items: [e] });
+    }
+    main.innerHTML = groups.map(g => {
+      const rel = relDay(g.date);
+      return `<section class="group">
+        <button class="group-head ${g.date === t ? 'is-today' : ''}" data-day="${g.date}">
+          <strong>${rel || fmtShort(g.date)}</strong>${rel ? `<span>${fmtShort(g.date)}</span>` : ''}
+        </button>
+        <div class="entries">${g.items.map(e => entryHTML(e)).join('')}</div>
+      </section>`;
+    }).join('');
+  }
+
+  // ---------- Sheet ----------
+  let lastFocus = null;
+  function openSheet(html) {
+    if (!document.body.classList.contains('sheet-open')) lastFocus = document.activeElement;
+    sheet.innerHTML = html;
+    sheet.scrollTop = 0;
+    document.body.classList.add('sheet-open');
+  }
+  function closeSheet() {
+    if (!document.body.classList.contains('sheet-open')) return;
+    document.body.classList.remove('sheet-open');
+    if (document.activeElement && sheet.contains(document.activeElement)) document.activeElement.blur();
+    if (lastFocus && lastFocus.isConnected && matchMedia('(hover: hover)').matches) lastFocus.focus({ preventScroll: true });
+  }
+  const sheetOpen = () => document.body.classList.contains('sheet-open');
+
+  function openDay(k) {
+    const items = entriesOn(k);
+    const rel = relDay(k);
+    openSheet(`
+      <div class="sheet-head">
+        ${rel ? `<div class="meta">${rel}</div>` : ''}
+        <h2>${fmtLong(k)}</h2>
+      </div>
+      ${items.length
+        ? `<div class="entries">${items.map(e => entryHTML(e, true)).join('')}</div>`
+        : '<p class="muted">Nothing planned.</p>'}
+      <button class="btn primary wide" data-add="${k}">Add to ${DOW_FULL[dowIdx(parse(k))]}</button>
+    `);
+  }
+
+  function openDetail(id) {
+    const e = find(id);
+    if (!e) return;
+    openSheet(`
+      <div class="meta">${fmtLong(e.date)}${e.time ? ' · ' + e.time : ''}</div>
+      <h2>${esc(e.title)}</h2>
+      ${e.notes ? `<p class="notes">${esc(e.notes)}</p>` : '<p class="notes none">No description.</p>'}
+      <div class="actions">
+        <button class="btn danger" data-delete="${e.id}">Delete</button>
+        <button class="btn" data-edit="${e.id}">Edit</button>
+      </div>
+    `);
+  }
+
+  // ---------- Quick entry form ----------
+  let form = null; // { id, date, chipWeek }
+
+  function defaultDate() {
+    if (state.view === 'week' && state.offset !== 0) return ymd(viewedWeekStart());
+    return ymd(today());
+  }
+
+  function openForm(entry, date) {
+    const d = entry ? entry.date : (date || defaultDate());
+    form = { id: entry ? entry.id : null, date: d, chipWeek: startOfWeek(parse(d)) };
+    const hasNotes = !!(entry && entry.notes);
+    openSheet(`
+      <form id="entryForm" novalidate autocomplete="off">
+        <input id="fTitle" class="title-input" placeholder="What's planned?" maxlength="200"
+               enterkeyhint="done" value="${esc(entry ? entry.title : '')}">
+        <div class="field">
+          <div class="field-head">
+            <span class="label">Day</span>
+            <div class="mini-nav">
+              <button type="button" data-chipweek="-1" aria-label="Previous week">${CHEV_L}</button>
+              <span id="chipRange"></span>
+              <button type="button" data-chipweek="1" aria-label="Next week">${CHEV_R}</button>
+            </div>
+          </div>
+          <div class="chips" id="chips"></div>
+        </div>
+        <div class="field time-row">
+          <label class="label" for="fTime">Time <span class="opt">· optional</span></label>
+          <input type="time" id="fTime" value="${entry ? entry.time || '' : ''}">
+          <button type="button" class="clear" data-cleartime>Clear</button>
+        </div>
+        <div class="field">
+          <button type="button" class="link" data-shownotes ${hasNotes ? 'hidden' : ''}>+ Add description</button>
+          <div id="notesWrap" ${hasNotes ? '' : 'hidden'}>
+            <label class="label" for="fNotes">Description</label>
+            <textarea id="fNotes" rows="3">${esc(entry ? entry.notes || '' : '')}</textarea>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" data-close>Cancel</button>
+          <button type="submit" class="btn primary">${entry ? 'Save' : 'Add'}</button>
+        </div>
+      </form>
+    `);
+    renderChips();
+    $('#entryForm').addEventListener('submit', submitForm);
+    const title = $('#fTitle');
+    title.focus();
+    if (entry) title.setSelectionRange(title.value.length, title.value.length);
+  }
+
+  function renderChips() {
+    const t = ymd(today());
+    $('#chipRange').textContent = rangeLabel(form.chipWeek);
+    let html = '';
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(form.chipWeek, i);
+      const k = ymd(d);
+      html += `<button type="button" class="chip ${k === t ? 'is-today' : ''}" data-date="${k}"
+        aria-pressed="${k === form.date}" aria-label="${fmtLong(k)}">${DOW[i]}<b>${d.getDate()}</b></button>`;
+    }
+    $('#chips').innerHTML = html;
+  }
+
+  function submitForm(ev) {
+    ev.preventDefault();
+    const titleEl = $('#fTitle');
+    const title = titleEl.value.trim();
+    if (!title) {
+      titleEl.classList.remove('shake'); void titleEl.offsetWidth; titleEl.classList.add('shake');
+      titleEl.focus();
+      return;
+    }
+    const data = { title, date: form.date, time: $('#fTime').value || '', notes: $('#fNotes').value.trim() };
+    let id = form.id;
+    if (id) Object.assign(find(id), data);
+    else { id = uid(); state.entries.push({ id, ...data, created: Date.now() }); }
+    persist();
+    closeSheet();
+    if (state.view === 'week') state.offset = Math.round(dayDiff(startOfWeek(parse(data.date)), startOfWeek(today())) / 7);
+    render();
+    const el = main.querySelector(`[data-open="${id}"]`);
+    if (el) { el.classList.add('flash'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  }
+
+  function deleteEntry(btn) {
+    if (!btn.classList.contains('armed')) {
+      btn.classList.add('armed');
+      btn.textContent = 'Tap again to delete';
+      setTimeout(() => { if (btn.isConnected) { btn.classList.remove('armed'); btn.textContent = 'Delete'; } }, 3000);
+      return;
+    }
+    state.entries = state.entries.filter(e => e.id !== btn.dataset.delete);
+    persist();
+    closeSheet();
+    render();
+  }
+
+  // ---------- Navigation ----------
+  function nav(dir) {
+    state.offset = dir === 0 ? 0 : state.offset + dir;
+    render();
+    window.scrollTo({ top: 0 });
+  }
+  function setView(v) {
+    state.view = v;
+    localStorage.setItem(VIEW_KEY, v);
+    if (v === 'week') state.offset = 0;
+    render();
+    window.scrollTo({ top: 0 });
+  }
+
+  // ---------- Events ----------
+  const ACTIONS = '[data-open],[data-add],[data-day],[data-edit],[data-delete],[data-close],[data-nav],[data-view],[data-chipweek],[data-date],[data-cleartime],[data-shownotes]';
+  document.addEventListener('click', ev => {
+    const el = ev.target.closest(ACTIONS);
+    if (!el) return;
+    const ds = el.dataset;
+    if ('open' in ds) openDetail(ds.open);
+    else if ('add' in ds) openForm(null, ds.add || null);
+    else if ('day' in ds) openDay(ds.day);
+    else if ('edit' in ds) openForm(find(ds.edit));
+    else if ('delete' in ds) deleteEntry(el);
+    else if ('close' in ds) closeSheet();
+    else if ('nav' in ds) nav(Number(ds.nav));
+    else if ('view' in ds) setView(ds.view);
+    else if ('chipweek' in ds) { form.chipWeek = addDays(form.chipWeek, 7 * Number(ds.chipweek)); renderChips(); }
+    else if ('date' in ds) { form.date = ds.date; renderChips(); }
+    else if ('cleartime' in ds) $('#fTime').value = '';
+    else if ('shownotes' in ds) { el.hidden = true; $('#notesWrap').hidden = false; $('#fNotes').focus(); }
+  });
+
+  document.addEventListener('keydown', ev => {
+    if (sheetOpen()) {
+      if (ev.key === 'Escape') { ev.preventDefault(); closeSheet(); }
+      return;
+    }
+    if (ev.target.closest('input, textarea') || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (ev.key === 'n' || ev.key === '+') { ev.preventDefault(); openForm(null); }
+    else if (state.view === 'week' && ev.key === 'ArrowLeft') nav(-1);
+    else if (state.view === 'week' && ev.key === 'ArrowRight') nav(1);
+    else if (ev.key === 't') nav(0);
+  });
+
+  // Swipe left/right on the week to change weeks
+  let touch = null;
+  main.addEventListener('touchstart', ev => {
+    const p = ev.touches[0];
+    touch = ev.touches.length === 1 ? { x: p.clientX, y: p.clientY } : null;
+  }, { passive: true });
+  main.addEventListener('touchend', ev => {
+    if (!touch || state.view !== 'week') return;
+    const p = ev.changedTouches[0];
+    const dx = p.clientX - touch.x, dy = p.clientY - touch.y;
+    touch = null;
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2) nav(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
+  // Keep "today" correct if the app is left open overnight
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheetOpen()) render(); });
+  // Keep multiple tabs in sync
+  window.addEventListener('storage', e => { if (e.key === KEY) { state.entries = load(); if (!sheetOpen()) render(); } });
+
+  render();
+})();
+</script>
+</body>
+</html>
