@@ -53,15 +53,23 @@
   }
   .range { display: flex; flex-direction: column; align-items: flex-start; padding: 2px 6px; min-width: 0; }
   #rangeMain { font-weight: 600; font-size: 16px; white-space: nowrap; }
-  #rangeSub { font-size: 12px; color: var(--muted); }
+  #rangeSub { font-size: 12px; color: var(--muted); white-space: nowrap; }
   #rangeSub.away { color: var(--accent); }
   .list-title { display: none; font-weight: 600; font-size: 16px; padding: 8px 4px; }
   body[data-mode="list"] .nav { display: none; }
   body[data-mode="list"] .list-title { display: block; }
 
   .seg { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; flex: none; }
-  .seg button { padding: 6px 12px; border-radius: 7px; font-size: 13px; color: var(--muted); }
+  .seg button { padding: 6px 10px; border-radius: 7px; font-size: 13px; color: var(--muted); }
   .seg button[aria-pressed="true"] { background: var(--surface-3); color: var(--text); }
+
+  @media (max-width: 380px) {
+    .top { padding-left: 8px; padding-right: 8px; gap: 6px; }
+    .icon { width: 30px; }
+    .range { padding: 2px 4px; }
+    #rangeMain { font-size: 15px; }
+    .seg button { padding: 6px 8px; font-size: 12px; }
+  }
 
   main { max-width: 640px; margin: 0 auto; padding: 12px 12px 0; }
 
@@ -178,21 +186,90 @@
   .chip.is-today { box-shadow: inset 0 0 0 1px rgba(138, 180, 255, .45); }
   .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
   .chip[aria-pressed="true"] b { color: var(--accent-ink); }
-  .time-row { display: flex; align-items: center; gap: 10px; }
-  .time-row .label { flex: 1; }
+  .time-row { display: flex; align-items: center; gap: 8px; }
+  .time-row input { flex: 1; min-width: 0; }
+  .dash { color: var(--faint); }
   input[type="time"], textarea {
     background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 9px 12px; outline: 0;
   }
-  input[type="time"] { min-width: 120px; min-height: 42px; }
+  input[type="time"] { min-height: 42px; }
   input[type="time"]:focus, textarea:focus { border-color: rgba(138, 180, 255, .6); }
-  .clear { font-size: 13px; color: var(--muted); padding: 8px 4px; }
+  .clear { font-size: 13px; color: var(--muted); padding: 4px; }
   textarea { width: 100%; resize: vertical; min-height: 72px; margin-top: 8px; }
   .link { color: var(--accent); font-size: 14px; padding: 4px 0; }
+
+  /* ---------- Grid (timetable) view ---------- */
+  body[data-mode="grid"] {
+    height: 100vh; height: 100dvh; min-height: 0; padding-bottom: 0;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  body[data-mode="grid"] .top { flex: none; }
+  body[data-mode="grid"] main {
+    flex: 1; min-height: 0; width: 100%; max-width: none; margin: 0; padding: 0;
+    overflow: auto; overscroll-behavior: contain;
+  }
+  .tt { --gutter: 52px; position: relative; min-width: calc(var(--gutter) + 7 * 108px); }
+  .tt-row { display: grid; grid-template-columns: var(--gutter) repeat(7, minmax(0, 1fr)); }
+  .tt-head { position: sticky; top: 0; z-index: 3; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .tt-corner { position: sticky; left: 0; z-index: 1; background: var(--bg); }
+  .tt-day {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 8px 0 6px; font-size: 12px; color: var(--muted);
+    border-left: 1px solid var(--border);
+  }
+  .tt-day b { font-size: 17px; font-weight: 600; color: var(--text); }
+  .tt-day.is-today, .tt-day.is-today b { color: var(--accent); }
+  .tt-day.is-past { opacity: .55; }
+  .tt-allday { border-top: 1px solid var(--border); }
+  .tt-allday .tt-corner {
+    display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;
+    font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .04em;
+  }
+  .tt-adcell { border-left: 1px solid var(--border); padding: 3px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .tt-chip {
+    font-size: 12px; text-align: left; padding: 3px 6px; border-radius: 6px; background: var(--surface-3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .tt-hours { position: sticky; left: 0; z-index: 2; background: var(--bg); }
+  .tt-hour {
+    height: var(--hour); padding: 3px 8px 0 0; text-align: right;
+    font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .tt-col {
+    position: relative; height: calc(24 * var(--hour)); cursor: pointer;
+    border-left: 1px solid var(--border);
+    background-image:
+      linear-gradient(to bottom, var(--border) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, .025) 1px, transparent 1px);
+    background-size: 100% var(--hour), 100% calc(var(--hour) / 2);
+  }
+  .tt-col.is-today { background-color: rgba(138, 180, 255, .045); }
+  .tt-block {
+    position: absolute; display: flex; flex-direction: column; overflow: hidden; text-align: left;
+    border-radius: 6px; background: #1d2636; border: 1px solid rgba(138, 180, 255, .3);
+    font-size: 12px; line-height: 1.3;
+  }
+  .tt-block .tt-time {
+    flex: none; padding: 2px 6px; background: var(--accent); color: var(--accent-ink);
+    font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tt-block .tt-title { padding: 3px 6px 0; font-weight: 600; overflow-wrap: break-word; }
+  .tt-block .tt-notes { padding: 2px 6px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tt-block.short { flex-direction: row; align-items: center; }
+  .tt-block.short .tt-time { background: none; color: var(--accent); padding-right: 0; }
+  .tt-block.short .tt-title { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tt-col.is-past .tt-block { opacity: .6; }
+  .tt-block.flash, .tt-chip.flash { animation: ring 1.2s ease-out; }
+  @keyframes ring { 0% { box-shadow: 0 0 0 3px rgba(138, 180, 255, .8); } 100% { box-shadow: 0 0 0 3px rgba(138, 180, 255, 0); } }
+  .tt-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--danger); z-index: 1; pointer-events: none; }
+  .tt-now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+  .tt-end { height: 96px; } /* room under 23:00 so the + button doesn't cover it */
 
   @media (hover: hover) {
     .icon:hover, .day-add:hover, .mini-nav button:hover { background: var(--surface-2); color: var(--text); }
     .entry:hover { background: var(--surface-3); }
+    .tt-block:hover, .tt-chip:hover { filter: brightness(1.2); }
     .day-open:hover .dow { text-decoration: underline; text-underline-offset: 3px; }
     .btn:hover { filter: brightness(1.1); }
   }
@@ -234,6 +311,7 @@
   <div class="list-title">Upcoming</div>
   <div class="seg" role="group" aria-label="View">
     <button data-view="week">Week</button>
+    <button data-view="grid">Grid</button>
     <button data-view="list">List</button>
   </div>
 </header>
@@ -263,7 +341,7 @@
 
   const state = {
     entries: load(),
-    view: localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'week',
+    view: ['week', 'grid', 'list'].includes(localStorage.getItem(VIEW_KEY)) ? localStorage.getItem(VIEW_KEY) : 'week',
     offset: 0, // weeks from the current week
   };
 
@@ -312,6 +390,8 @@
   const find = id => state.entries.find(e => e.id === id);
   const byTime = (a, b) => (a.time || '').localeCompare(b.time || ''); // untimed first
   const entriesOn = k => state.entries.filter(e => e.date === k).sort(byTime);
+  const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const fmtRange = e => e.time && e.end ? `${e.time} – ${e.end}` : e.time || '';
 
   const NOTES_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h9"/></svg>';
   const CHEV_L = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
@@ -328,20 +408,32 @@
   }
 
   // ---------- Rendering ----------
-  function render() {
+  // resetScroll: in grid view, scroll to a sensible hour instead of keeping the current position
+  function render(resetScroll = false) {
     document.body.dataset.mode = state.view;
     document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === state.view));
     main.classList.toggle('wide', state.view === 'week');
-    state.view === 'week' ? renderWeek() : renderList();
+    if (state.view === 'week') renderWeek();
+    else if (state.view === 'list') renderList();
+    else {
+      const top = main.scrollTop, left = main.scrollLeft;
+      renderGrid();
+      if (resetScroll) scrollGridDefault();
+      else { main.scrollTop = top; main.scrollLeft = left; }
+    }
+  }
+
+  function renderRange(start) {
+    $('#rangeMain').textContent = rangeLabel(start);
+    const sub = $('#rangeSub');
+    sub.textContent = state.offset === 0 ? weekSub(0) : `${weekSub(state.offset)} · Today ↩`;
+    sub.classList.toggle('away', state.offset !== 0);
   }
 
   function renderWeek() {
     const start = viewedWeekStart();
     const t = ymd(today());
-    $('#rangeMain').textContent = rangeLabel(start);
-    const sub = $('#rangeSub');
-    sub.textContent = state.offset === 0 ? weekSub(0) : `${weekSub(state.offset)} · back to today`;
-    sub.classList.toggle('away', state.offset !== 0);
+    renderRange(start);
 
     let html = '';
     for (let i = 0; i < 7; i++) {
@@ -362,6 +454,89 @@
       </section>`;
     }
     main.innerHTML = `<div class="week">${html}</div>`;
+  }
+
+  const HOUR_PX = 48;
+  const DAY_MIN = 24 * 60;
+
+  function renderGrid() {
+    const start = viewedWeekStart();
+    const t = ymd(today());
+    renderRange(start);
+
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(start, i);
+      const k = ymd(d);
+      days.push({ i, d, k, cls: k === t ? 'is-today' : k < t ? 'is-past' : '', items: entriesOn(k) });
+    }
+    const head = days.map(x =>
+      `<button class="tt-day ${x.cls}" data-day="${x.k}">${DOW[x.i]}<b>${x.d.getDate()}</b></button>`).join('');
+    const allDay = days.some(x => x.items.some(e => !e.time))
+      ? `<div class="tt-row tt-allday"><div class="tt-corner">All day</div>${days.map(x =>
+          `<div class="tt-adcell">${x.items.filter(e => !e.time).map(e =>
+            `<button class="tt-chip" data-open="${e.id}">${esc(e.title)}</button>`).join('')}</div>`).join('')}</div>`
+      : '';
+    let hours = '';
+    for (let h = 0; h < 24; h++) hours += `<div class="tt-hour">${pad(h)}:00</div>`;
+    const cols = days.map(x =>
+      `<div class="tt-col ${x.cls}" data-slot="${x.k}">${blocksHTML(x.items.filter(e => e.time))}${x.k === t ? '<div class="tt-now"></div>' : ''}</div>`).join('');
+
+    main.innerHTML = `<div class="tt" style="--hour:${HOUR_PX}px">
+      <div class="tt-head"><div class="tt-row"><div class="tt-corner"></div>${head}</div>${allDay}</div>
+      <div class="tt-row"><div class="tt-hours">${hours}</div>${cols}</div>
+      <div class="tt-end"></div>
+    </div>`;
+    updateNow();
+  }
+
+  // Timed entries in one day column; overlapping entries share the width side by side.
+  function blocksHTML(items) {
+    const evs = items.map(e => {
+      const s = toMin(e.time);
+      let end = e.end ? toMin(e.end) : s + 60; // no end time: show as 1 hour
+      if (end <= s) end = DAY_MIN;              // ends after midnight: run to the bottom
+      return { e, s, end: Math.min(DAY_MIN, Math.max(end, s + 30)) };
+    }).sort((a, b) => a.s - b.s || b.end - a.end);
+
+    let cluster = [], laneEnds = [], clusterEnd = -1;
+    const flush = () => { cluster.forEach(v => v.lanes = laneEnds.length); cluster = []; laneEnds = []; };
+    for (const v of evs) {
+      if (v.s >= clusterEnd) flush();
+      let lane = laneEnds.findIndex(end => end <= v.s);
+      if (lane < 0) { lane = laneEnds.length; laneEnds.push(v.end); } else laneEnds[lane] = v.end;
+      v.lane = lane;
+      cluster.push(v);
+      clusterEnd = Math.max(clusterEnd, v.end);
+    }
+    flush();
+
+    return evs.map(v => {
+      const h = (v.end - v.s) / 60 * HOUR_PX;
+      const short = h < 40;
+      return `<button class="tt-block${short ? ' short' : ''}" data-open="${v.e.id}"
+        style="top:${v.s / 60 * HOUR_PX}px;height:${h - 2}px;left:calc(${v.lane * 100 / v.lanes}% + 2px);width:calc(${100 / v.lanes}% - 4px)">
+        <span class="tt-time">${short ? v.e.time : fmtRange(v.e)}</span>
+        <span class="tt-title">${esc(v.e.title)}</span>
+        ${!short && v.e.notes ? `<span class="tt-notes">${esc(v.e.notes)}</span>` : ''}
+      </button>`;
+    }).join('');
+  }
+
+  function updateNow() {
+    const el = main.querySelector('.tt-now');
+    if (!el) return;
+    const n = new Date();
+    el.style.top = `${(n.getHours() * 60 + n.getMinutes()) / 60 * HOUR_PX}px`;
+  }
+
+  // Start near the current time on this week (07:00 otherwise), with today's column in view
+  function scrollGridDefault() {
+    const n = new Date();
+    const mins = main.querySelector('.tt-now') ? Math.max(0, n.getHours() * 60 + n.getMinutes() - 90) : 7 * 60;
+    main.scrollTop = mins / 60 * HOUR_PX;
+    const col = main.querySelector('.tt-col.is-today');
+    main.scrollLeft = col ? col.offsetLeft - main.querySelector('.tt-hours').offsetWidth - 8 : 0;
   }
 
   function renderList() {
@@ -425,7 +600,7 @@
     const e = find(id);
     if (!e) return;
     openSheet(`
-      <div class="meta">${fmtLong(e.date)}${e.time ? ' · ' + e.time : ''}</div>
+      <div class="meta">${fmtLong(e.date)}${e.time ? ' · ' + fmtRange(e) : ''}</div>
       <h2>${esc(e.title)}</h2>
       ${e.notes ? `<p class="notes">${esc(e.notes)}</p>` : '<p class="notes none">No description.</p>'}
       <div class="actions">
@@ -439,11 +614,11 @@
   let form = null; // { id, date, chipWeek }
 
   function defaultDate() {
-    if (state.view === 'week' && state.offset !== 0) return ymd(viewedWeekStart());
+    if (state.view !== 'list' && state.offset !== 0) return ymd(viewedWeekStart());
     return ymd(today());
   }
 
-  function openForm(entry, date) {
+  function openForm(entry, date, time = '') {
     const d = entry ? entry.date : (date || defaultDate());
     form = { id: entry ? entry.id : null, date: d, chipWeek: startOfWeek(parse(d)) };
     const hasNotes = !!(entry && entry.notes);
@@ -462,10 +637,16 @@
           </div>
           <div class="chips" id="chips"></div>
         </div>
-        <div class="field time-row">
-          <label class="label" for="fTime">Time <span class="opt">· optional</span></label>
-          <input type="time" id="fTime" value="${entry ? entry.time || '' : ''}">
-          <button type="button" class="clear" data-cleartime>Clear</button>
+        <div class="field">
+          <div class="field-head">
+            <label class="label" for="fTime">Time <span class="opt">· start – end, optional</span></label>
+            <button type="button" class="clear" data-cleartime>Clear</button>
+          </div>
+          <div class="time-row">
+            <input type="time" id="fTime" aria-label="Start time" value="${entry ? entry.time || '' : time}">
+            <span class="dash">–</span>
+            <input type="time" id="fEnd" aria-label="End time" value="${entry ? entry.end || '' : ''}">
+          </div>
         </div>
         <div class="field">
           <button type="button" class="link" data-shownotes ${hasNotes ? 'hidden' : ''}>+ Add description</button>
@@ -509,14 +690,17 @@
       titleEl.focus();
       return;
     }
-    const data = { title, date: form.date, time: $('#fTime').value || '', notes: $('#fNotes').value.trim() };
+    const time = $('#fTime').value || '';
+    const end = time && $('#fEnd').value !== time ? $('#fEnd').value || '' : '';
+    const data = { title, date: form.date, time, end, notes: $('#fNotes').value.trim() };
     let id = form.id;
     if (id) Object.assign(find(id), data);
     else { id = uid(); state.entries.push({ id, ...data, created: Date.now() }); }
     persist();
     closeSheet();
-    if (state.view === 'week') state.offset = Math.round(dayDiff(startOfWeek(parse(data.date)), startOfWeek(today())) / 7);
-    render();
+    const prevOffset = state.offset;
+    if (state.view !== 'list') state.offset = Math.round(dayDiff(startOfWeek(parse(data.date)), startOfWeek(today())) / 7);
+    render(state.offset !== prevOffset);
     const el = main.querySelector(`[data-open="${id}"]`);
     if (el) { el.classList.add('flash'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
   }
@@ -537,19 +721,19 @@
   // ---------- Navigation ----------
   function nav(dir) {
     state.offset = dir === 0 ? 0 : state.offset + dir;
-    render();
+    render(true);
     window.scrollTo({ top: 0 });
   }
   function setView(v) {
+    if (state.view === 'list') state.offset = 0;
     state.view = v;
     localStorage.setItem(VIEW_KEY, v);
-    if (v === 'week') state.offset = 0;
-    render();
+    render(true);
     window.scrollTo({ top: 0 });
   }
 
   // ---------- Events ----------
-  const ACTIONS = '[data-open],[data-add],[data-day],[data-edit],[data-delete],[data-close],[data-nav],[data-view],[data-chipweek],[data-date],[data-cleartime],[data-shownotes]';
+  const ACTIONS = '[data-open],[data-add],[data-day],[data-slot],[data-edit],[data-delete],[data-close],[data-nav],[data-view],[data-chipweek],[data-date],[data-cleartime],[data-shownotes]';
   document.addEventListener('click', ev => {
     const el = ev.target.closest(ACTIONS);
     if (!el) return;
@@ -557,6 +741,12 @@
     if ('open' in ds) openDetail(ds.open);
     else if ('add' in ds) openForm(null, ds.add || null);
     else if ('day' in ds) openDay(ds.day);
+    else if ('slot' in ds) {
+      // Tapping an empty spot in the grid starts an entry at that half hour
+      const y = ev.clientY - el.getBoundingClientRect().top;
+      const mins = Math.min(DAY_MIN - 30, Math.max(0, Math.floor(y / HOUR_PX * 2) * 30));
+      openForm(null, ds.slot, `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`);
+    }
     else if ('edit' in ds) openForm(find(ds.edit));
     else if ('delete' in ds) deleteEntry(el);
     else if ('close' in ds) closeSheet();
@@ -564,7 +754,7 @@
     else if ('view' in ds) setView(ds.view);
     else if ('chipweek' in ds) { form.chipWeek = addDays(form.chipWeek, 7 * Number(ds.chipweek)); renderChips(); }
     else if ('date' in ds) { form.date = ds.date; renderChips(); }
-    else if ('cleartime' in ds) $('#fTime').value = '';
+    else if ('cleartime' in ds) $('#fTime').value = $('#fEnd').value = '';
     else if ('shownotes' in ds) { el.hidden = true; $('#notesWrap').hidden = false; $('#fNotes').focus(); }
   });
 
@@ -575,8 +765,8 @@
     }
     if (ev.target.closest('input, textarea') || ev.metaKey || ev.ctrlKey || ev.altKey) return;
     if (ev.key === 'n' || ev.key === '+') { ev.preventDefault(); openForm(null); }
-    else if (state.view === 'week' && ev.key === 'ArrowLeft') nav(-1);
-    else if (state.view === 'week' && ev.key === 'ArrowRight') nav(1);
+    else if (state.view !== 'list' && ev.key === 'ArrowLeft') nav(-1);
+    else if (state.view !== 'list' && ev.key === 'ArrowRight') nav(1);
     else if (ev.key === 't') nav(0);
   });
 
@@ -598,8 +788,9 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheetOpen()) render(); });
   // Keep multiple tabs in sync
   window.addEventListener('storage', e => { if (e.key === KEY) { state.entries = load(); if (!sheetOpen()) render(); } });
+  setInterval(updateNow, 60000);
 
-  render();
+  render(true);
 })();
 </script>
 </body>
